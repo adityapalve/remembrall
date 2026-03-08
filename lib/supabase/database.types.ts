@@ -264,6 +264,14 @@ export type Database = {
         Args: { target_league_id: string };
         Returns: boolean;
       };
+      ensure_current_league_week: {
+        Args: { target_league_id: string };
+        Returns: string;
+      };
+      ensure_user_week_plan: {
+        Args: { target_league_id: string };
+        Returns: string;
+      };
       redeem_league_invite: {
         Args: { invite_code_input: string };
         Returns: string;

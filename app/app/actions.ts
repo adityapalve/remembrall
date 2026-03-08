@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { categoryPalette } from "@/lib/planner";
 import { createClient } from "@/lib/supabase/server";
 import { createInviteCode, slugifyInviteCode } from "@/lib/utils";
 
@@ -11,7 +12,7 @@ function readText(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function createLeague(formData: FormData) {
+async function requireViewer() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -20,6 +21,50 @@ export async function createLeague(formData: FormData) {
   if (!user) {
     redirect("/join?error=Please sign in first.");
   }
+
+  return { supabase, user };
+}
+
+async function ensurePlanId(supabase: Awaited<ReturnType<typeof createClient>>, leagueId: string) {
+  const { data: planId, error } = await supabase.rpc("ensure_user_week_plan", {
+    target_league_id: leagueId,
+  });
+
+  if (error || !planId) {
+    redirect(`/app/setup?error=${encodeURIComponent(error?.message ?? "Could not prepare your weekly plan.")}`);
+  }
+
+  return planId;
+}
+
+async function recalculatePlanAllocation(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  planId: string,
+) {
+  const { data: categories } = await supabase
+    .from("plan_categories")
+    .select("id")
+    .eq("user_week_plan_id", planId);
+
+  const categoryIds = (categories ?? []).map((category) => category.id);
+
+  if (categoryIds.length === 0) {
+    await supabase.from("user_week_plans").update({ points_allocated: 0 }).eq("id", planId);
+    return;
+  }
+
+  const { data: habits } = await supabase
+    .from("plan_habits")
+    .select("point_value")
+    .in("category_id", categoryIds);
+
+  const total = (habits ?? []).reduce((sum, habit) => sum + habit.point_value, 0);
+
+  await supabase.from("user_week_plans").update({ points_allocated: total }).eq("id", planId);
+}
+
+export async function createLeague(formData: FormData) {
+  const { supabase, user } = await requireViewer();
 
   const name = readText(formData, "name");
   const budgetValue = Number(readText(formData, "weeklyPointBudget") || 100);
@@ -74,14 +119,7 @@ export async function createLeague(formData: FormData) {
 }
 
 export async function joinLeague(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/join?error=Please sign in first.");
-  }
+  const { supabase } = await requireViewer();
 
   const inviteCode = slugifyInviteCode(readText(formData, "inviteCode"));
 
@@ -103,4 +141,164 @@ export async function joinLeague(formData: FormData) {
       `Joined league with invite code ${inviteCode}.`,
     )}&league=${encodeURIComponent(String(data ?? ""))}`,
   );
+}
+
+export async function addCategory(formData: FormData) {
+  const { supabase } = await requireViewer();
+  const leagueId = readText(formData, "leagueId");
+  const name = readText(formData, "name");
+
+  if (!leagueId || !name) {
+    redirect("/app/setup?error=Add a category name first.");
+  }
+
+  const planId = await ensurePlanId(supabase, leagueId);
+  const { data: existing } = await supabase
+    .from("plan_categories")
+    .select("id")
+    .eq("user_week_plan_id", planId);
+
+  const color = categoryPalette[(existing?.length ?? 0) % categoryPalette.length];
+
+  const { error } = await supabase.from("plan_categories").insert({
+    user_week_plan_id: planId,
+    name,
+    color,
+    sort_order: existing?.length ?? 0,
+  });
+
+  if (error) {
+    redirect(`/app/setup?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/setup");
+  redirect("/app/setup?success=Category%20added.");
+}
+
+export async function updateCategory(formData: FormData) {
+  const { supabase } = await requireViewer();
+  const categoryId = readText(formData, "categoryId");
+  const name = readText(formData, "name");
+
+  if (!categoryId || !name) {
+    redirect("/app/setup?error=Category name cannot be empty.");
+  }
+
+  const { error } = await supabase.from("plan_categories").update({ name }).eq("id", categoryId);
+
+  if (error) {
+    redirect(`/app/setup?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/app/setup");
+  redirect("/app/setup?success=Category%20updated.");
+}
+
+export async function deleteCategory(formData: FormData) {
+  const { supabase } = await requireViewer();
+  const categoryId = readText(formData, "categoryId");
+  const planId = readText(formData, "planId");
+
+  if (!categoryId || !planId) {
+    redirect("/app/setup?error=Could%20not%20delete%20category.");
+  }
+
+  const { error } = await supabase.from("plan_categories").delete().eq("id", categoryId);
+
+  if (error) {
+    redirect(`/app/setup?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await recalculatePlanAllocation(supabase, planId);
+  revalidatePath("/app/setup");
+  redirect("/app/setup?success=Category%20removed.");
+}
+
+export async function addHabit(formData: FormData) {
+  const { supabase, user } = await requireViewer();
+  const categoryId = readText(formData, "categoryId");
+  const planId = readText(formData, "planId");
+  const name = readText(formData, "name");
+  const metricType = readText(formData, "metricType") || "count";
+  const targetValue = Number(readText(formData, "targetValue") || 1);
+  const pointValue = Number(readText(formData, "pointValue") || 1);
+
+  if (!categoryId || !planId || !name) {
+    redirect("/app/setup?error=Habit name is required.");
+  }
+
+  const { data: existing } = await supabase
+    .from("plan_habits")
+    .select("id")
+    .eq("category_id", categoryId);
+
+  const { error } = await supabase.from("plan_habits").insert({
+    category_id: categoryId,
+    user_id: user.id,
+    name,
+    metric_type: metricType as "count" | "duration_minutes" | "binary" | "steps" | "sleep_hours",
+    target_value: targetValue,
+    point_value: pointValue,
+    sort_order: existing?.length ?? 0,
+  });
+
+  if (error) {
+    redirect(`/app/setup?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await recalculatePlanAllocation(supabase, planId);
+  revalidatePath("/app/setup");
+  redirect("/app/setup?success=Habit%20added.");
+}
+
+export async function updateHabit(formData: FormData) {
+  const { supabase } = await requireViewer();
+  const habitId = readText(formData, "habitId");
+  const name = readText(formData, "name");
+  const metricType = readText(formData, "metricType") || "count";
+  const targetValue = Number(readText(formData, "targetValue") || 1);
+  const pointValue = Number(readText(formData, "pointValue") || 1);
+  const planId = readText(formData, "planId");
+
+  if (!habitId || !name || !planId) {
+    redirect("/app/setup?error=Could%20not%20update%20habit.");
+  }
+
+  const { error } = await supabase
+    .from("plan_habits")
+    .update({
+      name,
+      metric_type: metricType as "count" | "duration_minutes" | "binary" | "steps" | "sleep_hours",
+      target_value: targetValue,
+      point_value: pointValue,
+    })
+    .eq("id", habitId);
+
+  if (error) {
+    redirect(`/app/setup?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await recalculatePlanAllocation(supabase, planId);
+  revalidatePath("/app/setup");
+  redirect("/app/setup?success=Habit%20updated.");
+}
+
+export async function deleteHabit(formData: FormData) {
+  const { supabase } = await requireViewer();
+  const habitId = readText(formData, "habitId");
+  const planId = readText(formData, "planId");
+
+  if (!habitId || !planId) {
+    redirect("/app/setup?error=Could%20not%20delete%20habit.");
+  }
+
+  const { error } = await supabase.from("plan_habits").delete().eq("id", habitId);
+
+  if (error) {
+    redirect(`/app/setup?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await recalculatePlanAllocation(supabase, planId);
+  revalidatePath("/app/setup");
+  redirect("/app/setup?success=Habit%20removed.");
 }

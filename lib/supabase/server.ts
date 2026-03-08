@@ -15,7 +15,13 @@ export async function createClient() {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options);
+          try {
+            cookieStore.set(name, value, options);
+          } catch {
+            // Server components can read cookies but cannot always write them.
+            // Supabase may attempt a refresh during render; server actions and
+            // route handlers handle the writable cookie path.
+          }
         });
       },
     },

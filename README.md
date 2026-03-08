@@ -30,6 +30,7 @@ npm run dev -- --hostname 0.0.0.0 --port 3000
 - Add values from your project to `.env.local`.
 - Run `supabase/schema.sql` in the Supabase SQL editor.
 - If you already ran an earlier version of the schema, also run `supabase/league-onboarding.sql`.
+- If you already ran the schema before weekly planner CRUD, also run `supabase/planner-crud.sql`.
 - Enable email/password auth and magic links in Supabase Auth.
 
 ## Local auth shortcuts
