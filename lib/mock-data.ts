@@ -108,16 +108,16 @@ export const appBoard: AppBoard = {
 
 export const authOptions: AuthOption[] = [
   {
-    label: "Continue with email",
-    description: "Magic-link auth keeps onboarding lightweight for friend groups.",
+    label: "Email + password",
+    description: "Fastest repeat sign-in flow for active testing and daily use.",
   },
   {
-    label: "Continue with Apple",
-    description: "Best native-feeling option for iPhone users once auth is wired up.",
+    label: "Magic link backup",
+    description: "Useful when you want a passwordless sign-in option on another device.",
   },
   {
-    label: "Join with invite code",
-    description: "Fastest path for a friend who was already invited into a league.",
+    label: "Dev bypass mode",
+    description: "Local-only authenticated preview for UI work without a real session.",
   },
 ];
 

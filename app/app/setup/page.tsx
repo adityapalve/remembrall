@@ -8,7 +8,7 @@ export default function SetupPage() {
   );
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+    <main className="min-h-screen pb-16">
       <section className="glass rounded-[2rem] p-6 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -16,11 +16,28 @@ export default function SetupPage() {
             <h1 className="display-font mt-2 text-4xl tracking-[-0.05em] sm:text-5xl">
               Shape the week before the league starts moving.
             </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted sm:text-base">
+              Categories are personal to each user. The league only compares total earned
+              points, so everyone can build a week around their own priorities.
+            </p>
           </div>
           <div className="rounded-[1.5rem] bg-[#14231c] px-5 py-4 text-white">
             <p className="text-xs uppercase tracking-[0.24em] text-white/60">Allocated</p>
             <p className="mt-2 text-3xl font-semibold">{totalPoints}/100 pts</p>
           </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 lg:grid-cols-3">
+          {[
+            ["1. Pick categories", "Fitness, focus, learning, recovery, or anything custom."],
+            ["2. Set goals", "Define a weekly target like 4 sessions or 300 minutes."],
+            ["3. Assign points", "Spend up to 100 points so the league stays fair."],
+          ].map(([label, text]) => (
+            <div key={label} className="rounded-[1.5rem] border border-line bg-white/60 p-4">
+              <p className="text-sm font-semibold">{label}</p>
+              <p className="mt-1 text-sm leading-6 text-muted">{text}</p>
+            </div>
+          ))}
         </div>
 
         <div className="mt-8 space-y-4">
@@ -66,8 +83,41 @@ export default function SetupPage() {
                   </div>
                 ))}
               </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background transition hover:bg-accent"
+                >
+                  Add another habit
+                </button>
+                <button
+                  type="button"
+                  className="rounded-full border border-line bg-white/70 px-4 py-2 text-sm font-semibold"
+                >
+                  Rename category
+                </button>
+              </div>
             </article>
           ))}
+        </div>
+
+        <div className="mt-8 grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+          <div className="rounded-[1.75rem] border border-line bg-white/60 p-5">
+            <p className="text-sm uppercase tracking-[0.24em] text-muted">Scoring rule</p>
+            <h2 className="display-font mt-2 text-3xl tracking-[-0.04em]">Progress earns points proportionally.</h2>
+            <p className="mt-3 text-sm leading-7 text-muted">
+              If a habit is worth 20 points and the weekly target is 4 workouts, then 3 workouts earns 15 points.
+              That keeps the leaderboard competitive without forcing identical habits.
+            </p>
+          </div>
+          <div className="rounded-[1.75rem] bg-[#1f7a6b] p-5 text-white">
+            <p className="text-sm uppercase tracking-[0.24em] text-white/65">Next implementation</p>
+            <h2 className="display-font mt-2 text-3xl tracking-[-0.04em]">Real save flow</h2>
+            <p className="mt-3 text-sm leading-7 text-white/80">
+              This screen is now structured around the real product model. Next we will connect it to Supabase so plans can be created, edited, and copied week to week.
+            </p>
+          </div>
         </div>
       </section>
     </main>

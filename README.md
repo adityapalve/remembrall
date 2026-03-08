@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Habit League
 
-## Getting Started
+Habit League is a mobile-first PWA for private habit competitions. Users create weekly categories, assign point budgets to goals, and compete on shared league leaderboards.
 
-First, run the development server:
+## Local development
+
+1. Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Copy env variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Start the app:
 
-## Learn More
+```bash
+npm run dev -- --hostname 0.0.0.0 --port 3000
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. Open `http://localhost:3000` on your Mac or `http://<your-local-ip>:3000` on your phone.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Supabase setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Create a Supabase project.
+- Add values from your project to `.env.local`.
+- Run `supabase/schema.sql` in the Supabase SQL editor.
+- If you already ran an earlier version of the schema, also run `supabase/league-onboarding.sql`.
+- Enable email/password auth and magic links in Supabase Auth.
 
-## Deploy on Vercel
+## Local auth shortcuts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Use email + password as the default auth flow, with magic links as a backup.
+- For local UI work without a real session, set `DEV_AUTH_BYPASS=true` in `.env.local` and open `/app` in development mode.
+- The bypass only works in local development and does not perform real database writes.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project docs
+
+- Product plan: `docs/mvp-plan.md`
+- Backend wiring notes: `docs/supabase-wiring.md`
+- Schema source: `supabase/schema.sql`
+
+## Current state
+
+- Branded landing page
+- Mock app dashboard and weekly setup flows
+- PWA metadata and install assets
+- Supabase client scaffolding and starter schema
