@@ -37,6 +37,32 @@ async function ensurePlanId(supabase: Awaited<ReturnType<typeof createClient>>, 
   return planId;
 }
 
+async function getWeekIdForPlan(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  planId: string,
+) {
+  const { data } = await supabase
+    .from("user_week_plans")
+    .select("league_week_id")
+    .eq("id", planId)
+    .single();
+
+  return data?.league_week_id ?? null;
+}
+
+async function refreshWeeklyScores(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  weekId: string | null,
+) {
+  if (!weekId) {
+    return;
+  }
+
+  await supabase.rpc("recompute_weekly_scores", {
+    target_league_week_id: weekId,
+  });
+}
+
 async function recalculatePlanAllocation(
   supabase: Awaited<ReturnType<typeof createClient>>,
   planId: string,
@@ -171,7 +197,11 @@ export async function addCategory(formData: FormData) {
     redirect(`/app/setup?error=${encodeURIComponent(error.message)}`);
   }
 
+  const weekId = await getWeekIdForPlan(supabase, planId);
+  await refreshWeeklyScores(supabase, weekId);
   revalidatePath("/app/setup");
+  revalidatePath("/app");
+  revalidatePath("/app/league");
   redirect("/app/setup?success=Category%20added.");
 }
 
@@ -190,7 +220,16 @@ export async function updateCategory(formData: FormData) {
     redirect(`/app/setup?error=${encodeURIComponent(error.message)}`);
   }
 
+  const { data: category } = await supabase
+    .from("plan_categories")
+    .select("user_week_plan_id")
+    .eq("id", categoryId)
+    .single();
+  const weekId = category ? await getWeekIdForPlan(supabase, category.user_week_plan_id) : null;
+  await refreshWeeklyScores(supabase, weekId);
   revalidatePath("/app/setup");
+  revalidatePath("/app");
+  revalidatePath("/app/league");
   redirect("/app/setup?success=Category%20updated.");
 }
 
@@ -210,7 +249,11 @@ export async function deleteCategory(formData: FormData) {
   }
 
   await recalculatePlanAllocation(supabase, planId);
+  const weekId = await getWeekIdForPlan(supabase, planId);
+  await refreshWeeklyScores(supabase, weekId);
   revalidatePath("/app/setup");
+  revalidatePath("/app");
+  revalidatePath("/app/league");
   redirect("/app/setup?success=Category%20removed.");
 }
 
@@ -247,7 +290,11 @@ export async function addHabit(formData: FormData) {
   }
 
   await recalculatePlanAllocation(supabase, planId);
+  const weekId = await getWeekIdForPlan(supabase, planId);
+  await refreshWeeklyScores(supabase, weekId);
   revalidatePath("/app/setup");
+  revalidatePath("/app");
+  revalidatePath("/app/league");
   redirect("/app/setup?success=Habit%20added.");
 }
 
@@ -279,7 +326,11 @@ export async function updateHabit(formData: FormData) {
   }
 
   await recalculatePlanAllocation(supabase, planId);
+  const weekId = await getWeekIdForPlan(supabase, planId);
+  await refreshWeeklyScores(supabase, weekId);
   revalidatePath("/app/setup");
+  revalidatePath("/app");
+  revalidatePath("/app/league");
   redirect("/app/setup?success=Habit%20updated.");
 }
 
@@ -299,6 +350,56 @@ export async function deleteHabit(formData: FormData) {
   }
 
   await recalculatePlanAllocation(supabase, planId);
+  const weekId = await getWeekIdForPlan(supabase, planId);
+  await refreshWeeklyScores(supabase, weekId);
   revalidatePath("/app/setup");
+  revalidatePath("/app");
+  revalidatePath("/app/league");
   redirect("/app/setup?success=Habit%20removed.");
+}
+
+export async function saveHabitProgress(formData: FormData) {
+  const { supabase, user } = await requireViewer();
+  const habitId = readText(formData, "habitId");
+  const value = Number(readText(formData, "progressValue") || 0);
+  const redirectTo = readText(formData, "redirectTo") || "/app";
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (!habitId || !Number.isFinite(value) || value < 0) {
+    redirect(`${redirectTo}?error=Enter%20a%20valid%20progress%20value.`);
+  }
+
+  const { error } = await supabase.from("habit_logs").upsert(
+    {
+      plan_habit_id: habitId,
+      user_id: user.id,
+      log_date: today,
+      progress_value: value,
+    },
+    { onConflict: "plan_habit_id,log_date" },
+  );
+
+  if (error) {
+    redirect(`${redirectTo}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  const { data: habit } = await supabase
+    .from("plan_habits")
+    .select("category_id")
+    .eq("id", habitId)
+    .single();
+  const { data: category } = habit
+    ? await supabase
+        .from("plan_categories")
+        .select("user_week_plan_id")
+        .eq("id", habit.category_id)
+        .single()
+    : { data: null };
+  const weekId = category ? await getWeekIdForPlan(supabase, category.user_week_plan_id) : null;
+  await refreshWeeklyScores(supabase, weekId);
+
+  revalidatePath("/app");
+  revalidatePath("/app/league");
+  revalidatePath("/app/setup");
+  redirect(`${redirectTo}?success=Progress%20saved.`);
 }

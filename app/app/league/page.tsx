@@ -1,24 +1,16 @@
-import { appBoard } from "@/lib/mock-data";
+import { getLeagueDashboardData } from "@/lib/league-data";
 
-const momentum = [
-  {
-    label: "Fast riser",
-    value: "Noah +11",
-    note: "Biggest gain since Tuesday after catching up on recovery habits.",
-  },
-  {
-    label: "Closest battle",
-    value: "#2 vs #3",
-    note: "Only 5 points separate second and third right now.",
-  },
-  {
-    label: "Most completed",
-    value: "Maya 13/15",
-    note: "Leading by consistency, not just one oversized goal.",
-  },
-];
+export default async function LeaguePage() {
+  const dashboard = await getLeagueDashboardData();
+  const activeLeague = dashboard.activeLeague;
+  const leader = dashboard.leaderboard[0];
+  const closestGap = dashboard.leaderboard.length > 2
+    ? Math.abs(dashboard.leaderboard[1].points - dashboard.leaderboard[2].points)
+    : null;
+  const mostHabits = dashboard.leaderboard
+    .slice()
+    .sort((a, b) => b.habitCount - a.habitCount)[0];
 
-export default function LeaguePage() {
   return (
     <main className="min-h-screen pb-16">
       <section className="glass rounded-[2rem] p-6 sm:p-8">
@@ -26,33 +18,62 @@ export default function LeaguePage() {
           <div>
             <p className="text-sm uppercase tracking-[0.24em] text-muted">League leaderboard</p>
             <h1 className="display-font mt-2 text-4xl tracking-[-0.05em] sm:text-5xl">
-              Weekly standings with enough tension to keep people logging.
+              Weekly standings with real member progress behind every point.
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted sm:text-base">
-              This view is where league momentum will live: rank movement, closing gaps, and who still has big point swings left.
+              The board now ranks actual league members by earned weekly points based on the habits and logs they have saved.
             </p>
           </div>
           <div className="rounded-[1.5rem] bg-[#14231c] px-5 py-4 text-white">
             <p className="text-xs uppercase tracking-[0.24em] text-white/60">League status</p>
-            <p className="mt-2 text-2xl font-semibold">Midweek sprint</p>
+            <p className="mt-2 text-2xl font-semibold">{activeLeague?.leagueName ?? "No league yet"}</p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 lg:grid-cols-3">
-          {momentum.map((item) => (
-            <div key={item.label} className="rounded-[1.5rem] border border-line bg-white/60 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-muted">{item.label}</p>
-              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{item.value}</p>
-              <p className="mt-1 text-sm leading-6 text-muted">{item.note}</p>
-            </div>
-          ))}
+          <div className="rounded-[1.5rem] border border-line bg-white/60 p-4">
+            <p className="text-xs uppercase tracking-[0.24em] text-muted">Current leader</p>
+            <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+              {leader ? `${leader.name} ${leader.points}` : "No scores yet"}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              {leader ? leader.note : "Add plans and daily logs to populate the board."}
+            </p>
+          </div>
+          <div className="rounded-[1.5rem] border border-line bg-white/60 p-4">
+            <p className="text-xs uppercase tracking-[0.24em] text-muted">Closest battle</p>
+            <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+              {closestGap !== null ? `${closestGap} pts` : "Waiting on more players"}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              {closestGap !== null
+                ? "Second and third place are nearly overlapping this week."
+                : "More members need to log progress before the race tightens up."}
+            </p>
+          </div>
+          <div className="rounded-[1.5rem] border border-line bg-white/60 p-4">
+            <p className="text-xs uppercase tracking-[0.24em] text-muted">Most planned habits</p>
+            <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+              {mostHabits ? `${mostHabits.name} ${mostHabits.habitCount}` : "No plans yet"}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              {mostHabits
+                ? "Planning volume is visible too, but only earned points determine rank."
+                : "Members need to create their weekly setup first."}
+            </p>
+          </div>
         </div>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-3">
-            {appBoard.leaderboard.map((member) => (
+            {dashboard.leaderboard.length === 0 ? (
+              <div className="rounded-[1.75rem] border border-dashed border-line bg-white/65 px-5 py-4 text-sm text-muted">
+                No leaderboard rows yet. Create a league plan and start logging progress.
+              </div>
+            ) : null}
+            {dashboard.leaderboard.map((member) => (
               <article
-                key={member.name}
+                key={member.userId}
                 className="rounded-[1.75rem] border border-line bg-white/65 px-5 py-4"
               >
                 <div className="flex items-center justify-between gap-4">
@@ -85,7 +106,7 @@ export default function LeaguePage() {
               <p className="text-sm uppercase tracking-[0.24em] text-white/70">Coming next</p>
               <p className="mt-2 text-xl font-semibold">Live rank movement and post-week recap</p>
               <p className="mt-2 text-sm leading-7 text-white/85">
-                Once leaderboard rows are backed by Supabase, this page becomes the competitive heart of the app.
+                The board is now real. Next we can add momentum deltas, streak context, and end-of-week summaries.
               </p>
             </div>
           </div>

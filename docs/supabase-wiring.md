@@ -34,8 +34,9 @@
 3. Run the SQL in `supabase/schema.sql` in the Supabase SQL editor.
 4. If you already ran the original schema before this league flow work, also run `supabase/league-onboarding.sql`.
 5. If you already ran the schema before weekly planner CRUD, also run `supabase/planner-crud.sql`.
-6. Enable email/password auth and optionally keep magic links enabled as a backup.
-7. Add your local URL and deployed URL to the auth redirect settings.
+6. If you already ran the schema before shared leaderboard updates, also run `supabase/shared-leaderboard.sql`.
+7. Enable email/password auth and optionally keep magic links enabled as a backup.
+8. Add your local URL and deployed URL to the auth redirect settings.
 
 ### Dev-only bypass
 - Set `DEV_AUTH_BYPASS=true` in `.env.local`.
@@ -44,11 +45,10 @@
 - It does not create a real Supabase session, so create/join league actions still need a real login.
 
 ### What still needs wiring in the app
-1. Redeem invite codes after auth callback and create `league_members` rows.
-2. Load dashboard data in `app/app/page.tsx` from Supabase instead of `lib/mock-data.ts`.
-3. Turn daily habit check-offs into writes against `habit_logs`.
-4. Recompute `weekly_scores` after log updates.
-5. Replace placeholder leaderboard cards with real league rankings.
+1. Improve habit logging UX for one-tap binary and increment flows.
+2. Add week rollover and copy-last-week setup.
+3. Add post-week recap and rank movement history.
+4. Optionally move some dashboard aggregations behind materialized or cached views later.
 
 ### Recommended implementation order
 1. Create/join league flow.

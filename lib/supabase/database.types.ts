@@ -272,6 +272,10 @@ export type Database = {
         Args: { target_league_id: string };
         Returns: string;
       };
+      recompute_weekly_scores: {
+        Args: { target_league_week_id: string };
+        Returns: undefined;
+      };
       redeem_league_invite: {
         Args: { invite_code_input: string };
         Returns: string;
